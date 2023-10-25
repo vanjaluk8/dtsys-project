@@ -1,0 +1,13 @@
+## MySQL User
+mysqlUser: <username>
+
+## MySQL Password
+mysqlPassword: <password>
+
+## MySQL Database
+mysqlDatabase: <dbname>
+  
+## Service type
+service:
+  enabled: true
+  type: ClusterIP
