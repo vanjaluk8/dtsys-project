@@ -14,7 +14,7 @@ Any type of API call can be used, eg. via Postman, curl and jq or similar.
 1. install Virtualbox on your machine (the easiest virtualization engine to use and configure)
 2. install **Vagrant** an ultra simple interface that can talk with your virtualization software
 3. clone this repo: [vagrant kubeadm kubernetes](https://github.com/techiescamp/vagrant-kubeadm-kubernetes)
-4. setup the machine requirements (eg. number of pods, network parameters, naming convention and resources)
+4. set up the machine requirements (eg. number of pods, network parameters, naming convention and resources)
 5. connect to the master node using vagrant ssh <master_node_name> and install **kubectl**: 
 `snap install kubectl --classic`
 
@@ -22,7 +22,7 @@ Any type of API call can be used, eg. via Postman, curl and jq or similar.
 1. Install **`helm`**: `snap install helm --classic`
 2. add **`bitnami/mysql`** repo: `sudo helm repo add bitnami https://charts.bitnami.com/bitnami` 
 3. run `helm repo update`
-4. setup a simple yaml file `values.yml` which will be used to setup all the necessary parameters for the MySQL installation
+4. set up a simple yaml file `values.yml` which will be used to setup all the necessary parameters for the MySQL installation
 ```
 ## MySQL User
 mysqlUser: <set_username>
@@ -47,4 +47,22 @@ The infrastructure part is now ready to deploy other services
 
 ---
 
-### 2. Dev part (TBD)
+## 2. Testing part with sample data and a simple docker setup 
+*I am using this most of the time because testing is faster and implementation of fixes does not require a lot of changes*
+
+1. Create a simple docker container that will run a mysql database, example here: [docker-compose.yaml](docker-compose.yaml)
+2. Import some dummy data, sql source here: [sample_data](sample_dbs)
+
+### The code
+- main.py is used for connecting to the database.
+  - using FASTApi and Pyspark to prove async communication and large-scale data processing
+  - routes are added for each query or example that we need
+  - swagger is available and adds some interactivity to the whole setup: http://localhost:8000/doc
+  - start the application on localhost using uvicorn (later I will put it in a docker container)
+- data_manipulation.ipynb
+  - install Jupyter before using this file
+  - just examples of how data can be pulled out and manipulated
+
+
+------
+[CHANGELOG.md](CHANGELOG.md) 

@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  mysql:
+    image: mysql:5.6
+    container_name: mysql-container
+    hostname: DB-1
+    environment:
+      MYSQL_ROOT_PASSWORD: DOKER123!
+      MYSQL_DATABASE: mydb
+      MYSQL_USER: dbuser
+      MYSQL_PASSWORD: DOKER123!
+    volumes:
+      - ./db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      default:
+        aliases:
+          - DB-1
+
+volumes:
+  db_data:
