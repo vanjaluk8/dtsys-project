@@ -63,6 +63,10 @@ The infrastructure part is now ready to deploy other services
   - install Jupyter before using this file
   - just examples of how data can be pulled out and manipulated
 
+------
+## Diagram
+
+![Flow Diagram](FlowDiagram.png)
 
 ------
 [CHANGELOG.md](CHANGELOG.md) 
