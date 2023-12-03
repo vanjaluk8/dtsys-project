@@ -166,4 +166,5 @@ cython_debug/
 /db_data/*
 !db_data/.gitkeep
 .Ds_Store
+/mysql_data/
 
