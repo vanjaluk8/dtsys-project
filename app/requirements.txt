@@ -1,4 +1,0 @@
-mysql-connector-python~=8.2.0
-fastapi~=0.104.1
-pyspark~=3.5.0
-uvicorn
