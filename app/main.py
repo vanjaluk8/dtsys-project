@@ -1,53 +1,46 @@
+import glob
+import os
+
 from fastapi import FastAPI
-from pyspark.sql import SparkSession
-import mysql.connector
+from motor.motor_asyncio import AsyncIOMotorClient
 import pandas as pd
+import asyncio
+from pymongo import MongoClient
 
 app = FastAPI()
-
-# Initialize PySpark
-spark = SparkSession.builder.appName("MySQLExample").getOrCreate()
-
-# MySQL Database Configuration
-db_config = {
-    'host': 'localhost',
-    'user': 'root',
-    'password': 'DOKER123!',
-    'database': 'world',
-}
+user = 'root'
+password = 'DOCKER123!'
 
 
-# Function to connect to MySQL and execute a query
-def query_mysql(query):
-    connection = mysql.connector.connect(**db_config)
-    cursor = connection.cursor()
-    cursor.execute(query)
-    result = cursor.fetchall()
-    cursor.close()
-    connection.close()
-    return result
+@app.on_event("startup")
+async def startup_event():
+    app.mongodb_client = AsyncIOMotorClient(f'mongodb://{user}:{password}@localhost:27017')
+    app.mongodb = app.mongodb_client['index_data']
 
+@app.get("/return_nasdaq_async")
+async def return_nasdaq_async():
+    cursor = app.mongodb['NASDAQ'].find()
+    # convert to list
+    data = await cursor.to_list(length=1000)  # specify a length limit
+    # convert ObjectId to string
+    for item in data:
+        item['_id'] = str(item['_id'])
+    # convert to dataframe
+    return data
 
-@app.get("/")
-async def read_root():
-    return {"message": "Welcome to your FastAPI app!"}
+@app.get("/return_nasdaq_sync")
+def return_nasdaq_sync():
+    client = MongoClient(f'mongodb://{user}:{password}@localhost:27017')
+    db = client['index_data']
+    cursor = db['NASDAQ'].find()
+    # convert to list
+    data = list(cursor)
+    # convert ObjectId to string
+    for item in data:
+        item['_id'] = str(item['_id'])
+    # convert to dataframe
 
-
-@app.get("/query-city.json")
-async def query_mysql_endpoint():
-    # Example MySQL query
-    query = "SELECT Name, CountryCode, District, Population FROM city;"
-    results = query_mysql(query)
-    result_list = [
-        {"Name": row[0],
-         "CountryCode": row[1],
-         "District": row[2],
-         "Population": row[3]
-         } for row in results]
-
-    return result_list
-
-
+    return data
 
 # if __name__ == "__main__":
 #     import uvicorn
