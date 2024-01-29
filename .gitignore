@@ -167,4 +167,4 @@ cython_debug/
 !db_data/.gitkeep
 .Ds_Store
 /mysql_data/
-
+/mongo_data/
