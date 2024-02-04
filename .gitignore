@@ -168,3 +168,4 @@ cython_debug/
 .Ds_Store
 /mysql_data/
 /mongo_data/
+/grafana_data/
