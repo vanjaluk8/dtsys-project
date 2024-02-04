@@ -1,18 +1,19 @@
 import concurrent
 from datetime import datetime
-
+import traceback
 import aiohttp
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 import pandas as pd
-from sqlalchemy import create_engine, Table, MetaData
+from sqlalchemy import create_engine, Table, MetaData, text
+from sqlalchemy.sql import select, exists
 
 
 app = FastAPI()
 user = 'root'
 password = 'DOCKER123!'
 
-rapidapi_key = "66e942c532msh6ff9c30c0f88dd1p1fae5djsne4e8f00e39c7"
+rapidapi_key = ""
 rapidapi_endpoint = "https://apidojo-yahoo-finance-v1.p.rapidapi.com"
 
 # Assuming you have a MySQL connection URL. Adjust accordingly.
@@ -33,9 +34,41 @@ async def fetch_data(symbol: str):
         headers = {"X-RapidAPI-Key": rapidapi_key}
 
         async with session.get(url, headers=headers) as response:
-            stock_data = await response.json()
+            stock_info = await response.json()
 
-    return stock_data
+    # Extract the required fields
+    longBusinessSummary = stock_info["summaryProfile"]["longBusinessSummary"]
+    industryDisp = stock_info["summaryProfile"]["industryDisp"]
+    sectorDisp = stock_info["summaryProfile"]["sectorDisp"]
+    fullTimeEmployees = stock_info["summaryProfile"]["fullTimeEmployees"]
+
+    # Create a dictionary with the extracted data
+    stock_info_data = {
+        "symbol": symbol,
+        "longBusinessSummary": longBusinessSummary,
+        "industryDisp": industryDisp,
+        "sectorDisp": sectorDisp,
+        "fullTimeEmployees": fullTimeEmployees
+    }
+
+    # Create a DataFrame from the stock info data
+    df = pd.DataFrame([stock_info_data])
+    print(df)
+
+    with engine.connect() as connection:
+        query = text("SELECT EXISTS(SELECT 1 FROM stock_info WHERE symbol = :symbol)")
+        symbol_exists = connection.execute(query, {"symbol": symbol}).scalar()
+        print(f'Symbol {symbol} exists: ', symbol_exists)
+        if not symbol_exists:
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                try:
+                    # if the data exists, it will be updated, if not do nothing
+                    executor.submit(df.to_sql, "stock_info", con=engine, if_exists='append', index=False)
+                    print(f"Stock info for {symbol} inserted successfully")
+                except Exception as e:
+                    print(e)
+                    traceback.print_exc()
+    return stock_info, {"message": "Stock info inserted successfully"}
 
 
 @app.get("/stock_price/{symbol}")
