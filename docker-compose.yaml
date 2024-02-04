@@ -17,6 +17,17 @@ services:
     networks:
       - my_network
 
+# Grafana
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana-container
+    ports:
+    - "3000:3000"
+    volumes:
+        - ./grafana_data:/var/lib/grafana
+    networks:
+    - my_network
+
 # MongoDB
   mongo:
     image: mongo:latest
