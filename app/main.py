@@ -12,7 +12,7 @@ app = FastAPI()
 user = 'root'
 password = 'DOCKER123!'
 
-rapidapi_key = "66e942c532msh6ff9c30c0f88dd1p1fae5djsne4e8f00e39c7"
+rapidapi_key = ""
 rapidapi_endpoint = "https://apidojo-yahoo-finance-v1.p.rapidapi.com"
 
 # Assuming you have a MySQL connection URL. Adjust accordingly.
