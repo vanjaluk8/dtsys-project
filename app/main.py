@@ -21,26 +21,33 @@ mysql_url = "mysql+pymysql://root:DOCKER123!@127.0.0.1/stock_data"
 engine = create_engine(mysql_url)
 metadata = MetaData()
 # Assuming your_table_name is the name of your MySQL table
-symbol = None
 
 
 ### RAPIDAPI METHODS
 @app.get("/stock_info/{symbol}")
 async def fetch_data(symbol: str):
-    global global_symbol
-    global_symbol = symbol
-    async with aiohttp.ClientSession() as session:
-        url = f"{rapidapi_endpoint}/stock/v2/get-summary?symbol={symbol}&region=US"
-        headers = {"X-RapidAPI-Key": rapidapi_key}
+    symbol = symbol.upper()
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"{rapidapi_endpoint}/stock/v2/get-summary?symbol={symbol}&region=US"
+            headers = {"X-RapidAPI-Key": rapidapi_key}
 
-        async with session.get(url, headers=headers) as response:
-            stock_info = await response.json()
+            async with session.get(url, headers=headers) as response:
+                stock_info = await response.json()
+                if 'summaryProfile' not in stock_info:
+                    raise Exception(f'Symbol {symbol} not found')
+
+    except Exception as e:
+        print(e)
+        return {"message": "Symbol not found"}
 
     # Extract the required fields
     longBusinessSummary = stock_info["summaryProfile"]["longBusinessSummary"]
     industryDisp = stock_info["summaryProfile"]["industryDisp"]
     sectorDisp = stock_info["summaryProfile"]["sectorDisp"]
     fullTimeEmployees = stock_info["summaryProfile"]["fullTimeEmployees"]
+    website = stock_info["summaryProfile"]["website"]
+    shortname = stock_info["quoteType"]["shortName"]
 
     # Create a dictionary with the extracted data
     stock_info_data = {
@@ -48,7 +55,9 @@ async def fetch_data(symbol: str):
         "longBusinessSummary": stock_info.get("summaryProfile", {}).get("longBusinessSummary", None),
         "industryDisp": stock_info.get("summaryProfile", {}).get("industryDisp", None),
         "sectorDisp": stock_info.get("summaryProfile", {}).get("sectorDisp", None),
-        "fullTimeEmployees": stock_info.get("summaryProfile", {}).get("fullTimeEmployees", None)
+        "fullTimeEmployees": stock_info.get("summaryProfile", {}).get("fullTimeEmployees", None),
+        "website": stock_info.get("summaryProfile", {}).get("website", None),
+        "shortname": stock_info.get("quoteType", {}).get("shortName", None)
     }
 
     # Create a DataFrame from the stock info data
@@ -63,10 +72,10 @@ async def fetch_data(symbol: str):
             with concurrent.futures.ThreadPoolExecutor() as executor:
                 try:
                     # if the data exists, it will be updated, if not do nothing
-                    executor.submit(df.to_sql, "stock_info", con=engine, if_exists='append', index=False)
+                    df.to_sql("stock_info", con=engine, if_exists='append', index=False)
                     print(f"Stock info for {symbol} inserted successfully")
 
-                    start_date = "2023-01-01"
+                    start_date = "2023-10-01"
                     end_date = "2024-01-01"
                     await fetch_price_data(symbol, start_date, end_date)
 
@@ -78,37 +87,40 @@ async def fetch_data(symbol: str):
 
 @app.get("/stock_price/{symbol}")
 async def fetch_price_data(symbol: str, start_date: str, end_date: str):
+    try:
+        async with aiohttp.ClientSession() as session:
+            url = f"{rapidapi_endpoint}/stock/v2/get-historical-data?symbol={symbol}&region=US&from={start_date}&to={end_date}"
+            headers = {"X-RapidAPI-Key": rapidapi_key}
 
-    async with aiohttp.ClientSession() as session:
-        url = f"{rapidapi_endpoint}/stock/v2/get-historical-data?symbol={symbol}&region=US&from={start_date}&to={end_date}"
-        headers = {"X-RapidAPI-Key": rapidapi_key}
+            async with session.get(url, headers=headers) as response:
+                response_data = await response.json()
+                stock_data_list = response_data["prices"]
+    except Exception as e:
+        print(e)
+        return {"message": "Symbol not found"}
 
-        async with session.get(url, headers=headers) as response:
-            response_data = await response.json()
-            stock_data_list = response_data["prices"]
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        for stock_data in stock_data_list:
+            if all(key in stock_data for key in ["date", "open", "high", "low", "close", "volume", "adjclose"]):
+                # Convert the date from a timestamp to a datetime object
+                stock_data["date"] = datetime.fromtimestamp(stock_data["date"])
 
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            for stock_data in stock_data_list:
-                if all(key in stock_data for key in ["date", "open", "high", "low", "close", "volume", "adjclose"]):
-                    # Convert the date from a timestamp to a datetime object
-                    stock_data["date"] = datetime.fromtimestamp(stock_data["date"])
+                # Ensure the other fields are of the correct data type
+                stock_data["open"] = float(stock_data["open"])
+                stock_data["high"] = float(stock_data["high"])
+                stock_data["low"] = float(stock_data["low"])
+                stock_data["close"] = float(stock_data["close"])
+                stock_data["volume"] = int(stock_data["volume"])
+                stock_data["adjclose"] = float(stock_data["adjclose"])
 
-                    # Ensure the other fields are of the correct data type
-                    stock_data["open"] = float(stock_data["open"])
-                    stock_data["high"] = float(stock_data["high"])
-                    stock_data["low"] = float(stock_data["low"])
-                    stock_data["close"] = float(stock_data["close"])
-                    stock_data["volume"] = int(stock_data["volume"])
-                    stock_data["adjclose"] = float(stock_data["adjclose"])
+                # Create a DataFrame from the stock data
+                df = pd.DataFrame([stock_data])
 
-                    # Create a DataFrame from the stock data
-                    df = pd.DataFrame([stock_data])
-
-                    try:
-                        executor.submit(df.to_sql, symbol, con=engine, if_exists='append',
-                                        index=False)
-                    except Exception as e:
-                        print(e)
+                try:
+                    executor.submit(df.to_sql, symbol, con=engine, if_exists='append',
+                                    index=False)
+                except Exception as e:
+                    print(e)
 
     return stock_data, {"message": "Data has been successfully added to the database."}
 
