@@ -45,10 +45,10 @@ async def fetch_data(symbol: str):
     # Create a dictionary with the extracted data
     stock_info_data = {
         "symbol": symbol,
-        "longBusinessSummary": longBusinessSummary,
-        "industryDisp": industryDisp,
-        "sectorDisp": sectorDisp,
-        "fullTimeEmployees": fullTimeEmployees
+        "longBusinessSummary": stock_info.get("summaryProfile", {}).get("longBusinessSummary", None),
+        "industryDisp": stock_info.get("summaryProfile", {}).get("industryDisp", None),
+        "sectorDisp": stock_info.get("summaryProfile", {}).get("sectorDisp", None),
+        "fullTimeEmployees": stock_info.get("summaryProfile", {}).get("fullTimeEmployees", None)
     }
 
     # Create a DataFrame from the stock info data
@@ -65,6 +65,11 @@ async def fetch_data(symbol: str):
                     # if the data exists, it will be updated, if not do nothing
                     executor.submit(df.to_sql, "stock_info", con=engine, if_exists='append', index=False)
                     print(f"Stock info for {symbol} inserted successfully")
+
+                    start_date = "2023-01-01"
+                    end_date = "2024-01-01"
+                    await fetch_price_data(symbol, start_date, end_date)
+
                 except Exception as e:
                     print(e)
                     traceback.print_exc()
@@ -100,9 +105,8 @@ async def fetch_price_data(symbol: str, start_date: str, end_date: str):
                     df = pd.DataFrame([stock_data])
 
                     try:
-                        # Run the to_sql() method in a separate thread
                         executor.submit(df.to_sql, symbol, con=engine, if_exists='append',
-                                        index=False, insert='multi')
+                                        index=False)
                     except Exception as e:
                         print(e)
 
