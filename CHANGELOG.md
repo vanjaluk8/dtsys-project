@@ -1,3 +1,8 @@
+## [3.0.0] - 2024-02-04
+### Added, removed, trying some new solutions
+- added rapidAPI for yahoo finance data
+- more dynamic data manipulation, abandoned boring csv and similar, rapidAPI returns back everything in a json format
+
 ## [2.0.0] - 2024-01-29
 ### Refactored
 - removed the concepts before, only docker will be used to spare CPU power
