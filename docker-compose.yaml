@@ -28,19 +28,6 @@ services:
     networks:
     - my_network
 
-# MongoDB
-  mongo:
-    image: mongo:latest
-    container_name: mongo-container
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: DOCKER123!
-    ports:
-      - "27017:27017"
-    volumes:
-      - ./mongo_data:/data/db
-    networks:
-      - my_network
 
 # FASTAPI
   fastapi:

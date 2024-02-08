@@ -3,27 +3,46 @@ from datetime import datetime
 import traceback
 import aiohttp
 from fastapi import FastAPI
-from motor.motor_asyncio import AsyncIOMotorClient
 import pandas as pd
 from sqlalchemy import create_engine, Table, MetaData, text
-from sqlalchemy.sql import select, exists
+from dotenv import load_dotenv
+import os
+from starlette.responses import RedirectResponse
+from starlette.status import HTTP_302_FOUND
+
+load_dotenv()
+# database credentials
+db_user = os.getenv('MYSQL_USER')
+db_password = os.getenv('MYSQL_PASSWORD')
+db_host = os.getenv('MYSQL_HOST')
+db = os.getenv('MYSQL_DATABASE')
+
+# RapidAPI credentials
+rapidapi_key = os.getenv('RAPIDAPI_KEY')
+rapidapi_endpoint = os.getenv('RAPIDAPI_ENDPOINT')
 
 
 app = FastAPI()
-user = 'root'
-password = 'DOCKER123!'
 
-rapidapi_key = ""
-rapidapi_endpoint = "https://apidojo-yahoo-finance-v1.p.rapidapi.com"
-
-# Assuming you have a MySQL connection URL. Adjust accordingly.
-mysql_url = "mysql+pymysql://root:DOCKER123!@127.0.0.1/stock_data"
+# spajanje na mysql preko sqlalchemy
+mysql_url = f'mysql+pymysql://{db_user}:{db_password}@{db_host}/{db}'
 engine = create_engine(mysql_url)
 metadata = MetaData()
-# Assuming your_table_name is the name of your MySQL table
+
 
 
 ### RAPIDAPI METHODS
+# connects to rapidapi and fetches stock info and after that runs the second api call for stock price
+
+
+@app.get("/")
+async def root():
+    return RedirectResponse(url="/docs", status_code=HTTP_302_FOUND)
+
+@app.get("/status")
+async def status():
+    return {"status": "OK"}
+
 @app.get("/stock_info/{symbol}")
 async def fetch_data(symbol: str):
     symbol = symbol.upper()
@@ -41,15 +60,8 @@ async def fetch_data(symbol: str):
         print(e)
         return {"message": "Symbol not found"}
 
-    # Extract the required fields
-    longBusinessSummary = stock_info["summaryProfile"]["longBusinessSummary"]
-    industryDisp = stock_info["summaryProfile"]["industryDisp"]
-    sectorDisp = stock_info["summaryProfile"]["sectorDisp"]
-    fullTimeEmployees = stock_info["summaryProfile"]["fullTimeEmployees"]
-    website = stock_info["summaryProfile"]["website"]
-    shortname = stock_info["quoteType"]["shortName"]
 
-    # Create a dictionary with the extracted data
+    # Create a dictionary with the extracted data, if the data is not available, it will be None - avoid KeyError
     stock_info_data = {
         "symbol": symbol,
         "longBusinessSummary": stock_info.get("summaryProfile", {}).get("longBusinessSummary", None),
@@ -57,7 +69,12 @@ async def fetch_data(symbol: str):
         "sectorDisp": stock_info.get("summaryProfile", {}).get("sectorDisp", None),
         "fullTimeEmployees": stock_info.get("summaryProfile", {}).get("fullTimeEmployees", None),
         "website": stock_info.get("summaryProfile", {}).get("website", None),
-        "shortname": stock_info.get("quoteType", {}).get("shortName", None)
+        "shortname": stock_info.get("quoteType", {}).get("shortName", None),
+        "beta": stock_info.get("defaultKeyStatistics").get("beta").get("raw", None),
+        "forwardPE": stock_info.get("defaultKeyStatistics").get("forwardPE").get("raw", None),
+        "EPS": stock_info.get("defaultKeyStatistics").get("trailingEps").get("raw", None),
+        "dividendYield": stock_info.get("summaryDetail").get("dividendYield").get("raw", None),
+        "mktCap": stock_info.get("summaryDetail").get("marketCap").get("raw", None),
     }
 
     # Create a DataFrame from the stock info data
@@ -65,11 +82,11 @@ async def fetch_data(symbol: str):
     print(df)
 
     with engine.connect() as connection:
-        query = text("SELECT EXISTS(SELECT 1 FROM stock_info WHERE symbol = :symbol)")
+        query = text("SELECT EXISTS(SELECT 1 FROM stock_info WHERE symbol = :symbol)")  # check if the symbol exists in the database, if not insert it
         symbol_exists = connection.execute(query, {"symbol": symbol}).scalar()
         print(f'Symbol {symbol} exists: ', symbol_exists)
         if not symbol_exists:
-            with concurrent.futures.ThreadPoolExecutor() as executor:
+            with concurrent.futures.ThreadPoolExecutor(): # use a thread pool to insert the data, will be faster
                 try:
                     # if the data exists, it will be updated, if not do nothing
                     df.to_sql("stock_info", con=engine, if_exists='append', index=False)
@@ -77,7 +94,7 @@ async def fetch_data(symbol: str):
 
                     start_date = "2023-10-01"
                     end_date = "2024-01-01"
-                    await fetch_price_data(symbol, start_date, end_date)
+                    await fetch_price_data(symbol, start_date, end_date) # call the second api to fetch stock price data
 
                 except Exception as e:
                     print(e)
@@ -85,6 +102,7 @@ async def fetch_data(symbol: str):
     return stock_info, {"message": "Stock info inserted successfully"}
 
 
+# connects to rapidapi and fetches stock price data
 @app.get("/stock_price/{symbol}")
 async def fetch_price_data(symbol: str, start_date: str, end_date: str):
     try:
@@ -99,7 +117,7 @@ async def fetch_price_data(symbol: str, start_date: str, end_date: str):
         print(e)
         return {"message": "Symbol not found"}
 
-    with concurrent.futures.ThreadPoolExecutor() as executor:
+    with concurrent.futures.ThreadPoolExecutor() as executor: # use a thread pool to insert the data, will be faster
         for stock_data in stock_data_list:
             if all(key in stock_data for key in ["date", "open", "high", "low", "close", "volume", "adjclose"]):
                 # Convert the date from a timestamp to a datetime object
@@ -117,8 +135,7 @@ async def fetch_price_data(symbol: str, start_date: str, end_date: str):
                 df = pd.DataFrame([stock_data])
 
                 try:
-                    executor.submit(df.to_sql, symbol, con=engine, if_exists='append',
-                                    index=False)
+                    executor.submit(df.to_sql, symbol, con=engine, if_exists='append', index=False)
                 except Exception as e:
                     print(e)
 
