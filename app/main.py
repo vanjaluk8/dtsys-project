@@ -4,7 +4,7 @@ import traceback
 import aiohttp
 from fastapi import FastAPI
 import pandas as pd
-from sqlalchemy import create_engine, Table, MetaData, text
+from sqlalchemy import create_engine, Table, MetaData, text, exc
 from dotenv import load_dotenv
 import os
 from starlette.responses import RedirectResponse
@@ -140,6 +140,24 @@ async def fetch_price_data(symbol: str, start_date: str, end_date: str):
                     print(e)
 
     return stock_data, {"message": "Data has been successfully added to the database."}
+
+
+# delete stock from database
+@app.delete("/stock_delete/{symbol}")
+async def delete_stock(symbol: str):
+    with engine.connect() as connection:
+        query = text("DELETE FROM stock_info WHERE symbol = :symbol")
+        result = connection.execute(query, {"symbol": symbol})
+        try:
+            table_to_drop = Table(symbol, metadata)
+            table_to_drop.drop(engine)
+        except exc.NoSuchTableError:
+            return {"message": f"No table named {symbol} found"}
+        if result.rowcount == 0:
+            return {"message": "Symbol not found"}
+            # Drop the table with the same symbol
+
+        return {"message": "Symbol and corresponding table deleted successfully"}
 
 
 # if __name__ == "__main__":
