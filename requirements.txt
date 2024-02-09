@@ -2,13 +2,13 @@ mysql-connector-python~=8.2.0
 fastapi~=0.104.1
 uvicorn~=0.23.2
 pandas~=2.1.2
+psutil
 requests~=2.26.0
-
 motor~=3.3.2
 pymongo~=4.6.1
 locust~=2.21.0
 aiohttp~=3.9.3
 SQLAlchemy~=2.0.25
 PyMySQL~=1.1.0
-
 python-dotenv~=1.0.1
+cryptography~=36.0.0

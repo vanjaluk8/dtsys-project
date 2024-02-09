@@ -34,7 +34,6 @@ metadata = MetaData()
 ### RAPIDAPI METHODS
 # connects to rapidapi and fetches stock info and after that runs the second api call for stock price
 
-
 @app.get("/")
 async def root():
     return RedirectResponse(url="/docs", status_code=HTTP_302_FOUND)

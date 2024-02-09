@@ -6,6 +6,9 @@ LABEL description="Dockerfile for FastAPI"
 LABEL version="1.0"
 LABEL hostname="fastapi-instance"
 
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev
 # Main workdir
 WORKDIR /code
 

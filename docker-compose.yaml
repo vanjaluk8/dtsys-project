@@ -15,7 +15,7 @@ services:
     volumes:
       - ./mysql_data:/var/lib/mysql
     networks:
-      - my_network
+      - docker_network
 
 # Grafana
   grafana:
@@ -25,8 +25,9 @@ services:
     - "3000:3000"
     volumes:
         - ./grafana_data:/var/lib/grafana
+        - ./configs/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
     networks:
-    - my_network
+      - docker_network
 
 
 # FASTAPI
@@ -37,8 +38,12 @@ services:
       dockerfile: DockerfileFastAPI
     ports:
       - "8000:8000"
+    networks:
+        - docker_network
+    depends_on:
+      - mysql
 
 # network definition
 networks:
-  my_network:
+  docker_network:
     driver: bridge
