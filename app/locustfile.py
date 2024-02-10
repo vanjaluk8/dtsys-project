@@ -23,7 +23,6 @@ class WebsiteUser(HttpUser):
         symbol = "AMZN"
         self.client.get(f"/stock_info/{symbol}")
 
-    @task
-    def fetch_stock_info_sync(self):
-        symbol = "AMZN"
-        self.client.get(f"/stock_sync/{symbol}")
+
+# RUN LOCUST FOR LOAD TESTING
+# loucst -f locustfile.py
