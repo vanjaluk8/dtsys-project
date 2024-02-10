@@ -1,6 +1,7 @@
 version: '3'
 
 services:
+
 # MySQL
   mysql:
     image: mysql:latest
@@ -17,7 +18,7 @@ services:
     networks:
       - docker_network
 
-# Grafana
+# GRAFANA
   grafana:
     image: grafana/grafana:latest
     container_name: grafana-container
@@ -28,7 +29,8 @@ services:
         - ./configs/grafana-datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
     networks:
       - docker_network
-
+    depends_on:
+      - mysql
 
 # FASTAPI
   fastapi:
@@ -43,7 +45,7 @@ services:
     depends_on:
       - mysql
 
-# network definition
+# NETWORK PARAMETERS
 networks:
   docker_network:
     driver: bridge

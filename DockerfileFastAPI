@@ -1,29 +1,27 @@
 FROM python:3.11-slim
 
-# various labels
+# LABELE
 LABEL authors="vanja"
 LABEL description="Dockerfile for FastAPI"
 LABEL version="1.0"
 LABEL hostname="fastapi-instance"
 
+# INSTALIRAJ BUILD ALATE
 RUN apt-get update && apt-get install -y \
     gcc \
-    python3-dev
-# Main workdir
+    python3-dev \
+
+# MAIN WORKDIR
 WORKDIR /code
 
-
-# Main workdir
-WORKDIR /code
-
-# Copy requirements.txt
+# KOPIRAJ REQUIREMENTS.TXT
 COPY ./requirements.txt /code/requirements.txt
 
-# Install requirements
+# INSTALIRAJ REQUIREMENTS
 RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-# Copy app main directory
+# KOPIRAJ APP FOLDER
 COPY ./app /code/app
 
-# run fastapi app
+# POKRENI SERVIS NA PORTU 8000
 ENTRYPOINT ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

@@ -1,3 +1,8 @@
+## [3.1.0] - 2024-02-10
+- added a new endpoint for the rapidAPI, now it is possible to get the data for the specific stock
+- grafana iplementation for the data visualization
+- added a new docker container for grafana
+- 
 ## [3.0.0] - 2024-02-04
 ### Added, removed, trying some new solutions
 - added rapidAPI for yahoo finance data
