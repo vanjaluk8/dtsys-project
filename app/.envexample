@@ -1,0 +1,9 @@
+# database connection
+MYSQL_USER = ''
+MYSQL_PASSWORD = ''
+MYSQL_HOST = ''
+MYSQL_DATABASE = ''
+
+# RapidAPI
+RAPIDAPI_KEY = ""
+RAPIDAPI_ENDPOINT = ""

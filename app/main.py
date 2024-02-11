@@ -85,11 +85,11 @@ async def fetch_indices_data():
 async def fetch_data(symbol: str):  # input a stock symbol (eg. AMZN, AAPL, TSLA, BRK-B, use stocks listed on US stock exchanges)
     symbol = symbol.upper()
     try:
-        async with aiohttp.ClientSession() as session: # use aiohttp to make an asynchronous request to the RapidAPI endpoint
+        async with aiohttp.ClientSession() as session:  # use aiohttp to make an asynchronous request to the RapidAPI endpoint
             url = f"{rapidapi_endpoint}/stock/v2/get-summary?symbol={symbol}&region=US"
             headers = {"X-RapidAPI-Key": rapidapi_key}
 
-            async with session.get(url, headers=headers) as response: # make a GET request to the specified URL
+            async with session.get(url, headers=headers) as response:  # make a GET request to the specified URL
                 stock_info = await response.json()
                 if 'summaryProfile' not in stock_info:
                     raise Exception(f'Symbol {symbol} not found')
@@ -138,19 +138,19 @@ async def fetch_data(symbol: str):  # input a stock symbol (eg. AMZN, AAPL, TSLA
     return stock_info, {"message": "Stock info inserted successfully"}
 
 
-@app.get("/stock_price/{symbol}") # connects to rapidapi and fetches stock price data
+@app.get("/stock_price/{symbol}")  # connects to rapidapi and fetches stock price data
 async def fetch_price_data(symbol: str, start_date: str, end_date: str):
     try:
-        async with aiohttp.ClientSession() as session: # use aiohttp to make an asynchronous request to the RapidAPI endpoint
+        async with aiohttp.ClientSession() as session:  # use aiohttp to make an asynchronous request to the RapidAPI endpoint
             url = f"{rapidapi_endpoint}/stock/v2/get-historical-data?symbol={symbol}&region=US&from={start_date}&to={end_date}"
             headers = {"X-RapidAPI-Key": rapidapi_key}
 
-            async with session.get(url, headers=headers) as response: # make a GET request to the specified URL
+            async with session.get(url, headers=headers) as response:  # make a GET request to the specified URL
                 response_data = await response.json()
                 stock_data_list = response_data["prices"]
     except Exception as e:
         print(e)
-        return {"message": "Symbol not found"} # if the symbol is not found, return a message
+        return {"message": "Symbol not found"}  # if the symbol is not found, return a message
 
     with concurrent.futures.ThreadPoolExecutor() as executor:  # use a thread pool to insert the data, will be faster
         for stock_data in stock_data_list:
@@ -169,25 +169,26 @@ async def fetch_price_data(symbol: str, start_date: str, end_date: str):
 
                 # Create a DataFrame from the stock data
                 df = pd.DataFrame([stock_data])
-                try: # insert the data into the database
+                try:  # insert the data into the database
                     executor.submit(df.to_sql, symbol, con=engine, if_exists='append', index=False)
                 except Exception as e:
                     print(e)
 
     return stock_data, {"message": "Data has been successfully added to the database."}
 
-@app.delete("/stock_delete/{symbol}") # delete stock from database
+
+@app.delete("/stock_delete/{symbol}")  # delete stock from database
 async def delete_stock(symbol: str):
     with engine.connect() as connection:
-        query = text("DELETE FROM stock_info WHERE symbol = :symbol") # query to delete the stock info from the database
+        query = text("DELETE FROM stock_info WHERE symbol = :symbol")  # query to delete the stock info from the database
         result = connection.execute(query, {"symbol": symbol})
         try:
             table_to_drop = Table(symbol, metadata)
             table_to_drop.drop(engine)
-        except exc.NoSuchTableError: # if the table is not found, return a message
+        except exc.NoSuchTableError:  # if the table is not found, return a message
             return {"message": f"No table named {symbol} found"}
-        if result.rowcount == 0: # if the symbol is not found, return a message
-            return {"message": "Symbol not found"}
+        if result.rowcount == 0:  # if the symbol is not found, return a message
+            return {"message": "Symbol not found or deleted successfully"}
             # Drop the table with the same symbol
 
         return {"message": "Symbol and corresponding table deleted successfully"}
@@ -197,3 +198,9 @@ async def delete_stock(symbol: str):
 #     import uvicorn
 #
 #     uvicorn.run(app, host="0.0.0.0", port=8001, reload=)
+
+
+#### CURL PRIMJERI
+# curl -X 'GET' 'http://127.0.0.1:8000/stock_info/NVDA' -H 'accept: application/json'
+# curl -X 'GET' 'http://127.0.0.1:8000/stock_price/NVDA?start_date=2023-06-01&end_date=2024-02-01' -H 'accept: application/json'
+# curl -X 'DELETE' 'http://127.0.0.1:8000/stock_delete/NVDA' -H 'accept: application/json'
